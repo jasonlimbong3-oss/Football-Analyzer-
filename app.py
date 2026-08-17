@@ -61,15 +61,15 @@ def evaluate_asian_handicap(row, ah_line, fav_team='Home'):
     else:
         return 'LOSE'
 
-# Load Data
+# Tampilan Utama
 st.title("⚽ Football Odds & Asian Handicap Analyzer Pro")
 st.write("Analisis presisi 10.000+ pertandingan historis: Matriks Skor Half Time (HT), Full Time (FT), dan Asian Handicap.")
 
-with st.spinner("Mengunduh dan memuat 10.000+ dataset pertandingan historis..."):
+with st.spinner("Mengunduh dataset pertandingan historis..."):
     df_matches = load_historical_data()
 
 # Sidebar Filters
-st.sidebar.header("⚙️ Parameter Pertandingan Sekarang")
+st.sidebar.header("⚙️ Parameter Pertandingan")
 
 if not df_matches.empty:
     st.sidebar.subheader("1. Match Odds (1X2)")
@@ -84,7 +84,7 @@ if not df_matches.empty:
                                    [0.0, -0.25, -0.50, -0.75, -1.0, -1.25, -1.50, -1.75, -2.0],
                                    index=2)
 
-    # Filtering Data
+    # Filter Data
     filtered_df = df_matches[
         (df_matches['B365H'].between(home_odds - margin, home_odds + margin)) &
         (df_matches['B365D'].between(draw_odds - margin, draw_odds + margin)) &
@@ -97,7 +97,7 @@ if not df_matches.empty:
         filtered_df['AH_Result'] = filtered_df.apply(lambda r: evaluate_asian_handicap(r, ah_line, fav_team), axis=1)
         ah_win_rate = (filtered_df['AH_Result'].isin(['WIN', 'WIN HALF'])).mean() * 100
 
-        # Ringkasan Statistik
+        # Card Statistik Utama
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             st.metric("HT Over 0.5 Goal", f"{(filtered_df['Total_Goals_HT'] > 0.5).mean() * 100:.1f}%")
@@ -108,9 +108,22 @@ if not df_matches.empty:
         with c4:
             st.metric(f"AH Cover ({fav_team} {ah_line})", f"{ah_win_rate:.1f}%")
 
+        # Tombol Download Excel
+        st.markdown("---")
+        output_excel = io.BytesIO()
+        with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+            filtered_df.to_excel(writer, index=False, sheet_name='Analisis_Odds')
+        
+        st.download_button(
+            label="🟢 Download Laporan Analisis (.xlsx)",
+            data=output_excel.getvalue(),
+            file_name="Laporan_Analisis_Odds.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
         st.markdown("---")
 
-        # RENDER 2 TABEL TERPISAH (HT & FT)
+        # RENDER 2 TABEL TERPISAH (HT & FT) VIA ST.MARKDOWN
         css_style = """
         <style>
           .table-box { background-color: #0f172a; border-radius: 8px; padding: 12px; margin-bottom: 20px; border: 1px solid #1e293b; }
@@ -215,6 +228,6 @@ if not df_matches.empty:
         st.markdown(html_ht, unsafe_allow_html=True)
         st.markdown(html_ft, unsafe_allow_html=True)
     else:
-        st.warning("Tidak ada sampel pertandingan yang cocok dengan kombinasi odds tersebut.")
+        st.warning("Tidak ada pertandingan yang cocok dengan rentang odds tersebut.")
 else:
     st.error("Gagal memuat dataset.")
